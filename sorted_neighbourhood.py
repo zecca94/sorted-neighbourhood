@@ -88,13 +88,13 @@ def sorted_neighbourhood(table, sorting_order, window_size, similarity_measure):
     offset = window_size // 2
     clusters = list()
     for i in range(0, len(sorted_table)):
-        cluster = list()
-        cluster.append((sorted_table[i][0], sorted_table[i][1]))
+        cluster = set()
+        cluster.add((sorted_table[i][0], sorted_table[i][1]))
         for j in range(i - offset, i + offset + 1):
             if (j >= 0) and (j < len(sorted_table)) and (i != j) and (sorted_table[i][0] != sorted_table[j][0]):
                 match = matching(sorted_table[i][2], sorted_table[j][2], similarity_measure)
                 if match is True:
-                    cluster.append((sorted_table[j][0], sorted_table[j][1]))
+                    cluster.add((sorted_table[j][0], sorted_table[j][1]))
         clusters.append(cluster)
 
     return clusters
@@ -133,29 +133,24 @@ def main():
     b = pd.read_csv(path_b, encoding='latin-1')
     second_table = sorting_key_constructor('b', b.values.tolist())
     complete_table = first_table + second_table
+    print('Number of entities in the original combined datasets: ' + str(len(complete_table)))
 
     clusters = sorted_neighbourhood(complete_table, 'asc', 9, 'levenshtein')
 
-    # further step: give a sense to clusters (delete clusters of a single element, repetitions and subsets)
+    # further step: give a sense to clusters (delete repetitions and subsets, a cluster for each entity)
     # possible improvement: merge clusters with elements in common
     i = 0
     while i < len(clusters):
-        if len(clusters[i]) == 1:
-            clusters.pop(i)
-        else:
-            j = i + 1
-            while (j < len(clusters)):
-                if (set(clusters[i]) >= set(clusters[j])):
-                    # duplicate clusters or i superset of j
-                    clusters.pop(j)
-                elif (set(clusters[i]) <= set(clusters[j])):
-                    # i subset of j
-                    clusters[i], clusters[j] = clusters[j], clusters[i]
-                    clusters.pop(j)
-                else:
-                    j = j + 1
-            i = i + 1
-    print('Found clusters: ' + str(len(clusters)))
+        j = i + 1
+        while (j < len(clusters)):
+            # if the clusters have some elements in common, merge them into the first one
+            if len(clusters[i].intersection(clusters[j])) > 0:
+                clusters[i].update(clusters[j])
+                clusters.pop(j)
+            else:
+                j = j + 1
+        i = i + 1
+    print('Number of entities after duplicate detection: ' + str(len(clusters)))
     print(clusters)
 
 
